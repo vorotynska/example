@@ -40,9 +40,7 @@ Promise.all([
             .transition()
             .duration(200)
             .style('stroke', 'transparent')
-
-
-    }
+    };
 
     // Draw the map
     svg.append("g")
@@ -62,5 +60,5 @@ Promise.all([
         .attr('class', d => 'Country')
         .style('opacity', 0.8)
         .on('mouseover', mouseOver)
-    .0('mouseleave', mouseLeave)
+        .on('mouseleave', mouseLeave)
 })

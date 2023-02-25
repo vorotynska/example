@@ -1,64 +1,73 @@
-const svg = d3.select('svg'),
-    width = +svg.attr('width'),
-    height = +svg.attr('height');
+const margin = {
+        top: 30,
+        right: 30,
+        bottom: 90,
+        left: 60
+    },
+    width = 460 - margin.left - margin.right,
+    height = 450 - margin.top - margin.bottom;
 
-const projection = d3.geoMercator()
-    .center([0, 20])
-    .scale(70)
-    .translate([width / 2, height / 2])
-let data = new Map()
-const colorScale = d3.scaleThreshold()
-    .domain([100000, 1000000, 10000000, 30000000, 100000000, 500000000])
-    .range(d3.schemeBlues[7]);
-// Load external data and boot
-Promise.all([
-    d3.json("https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson"),
-    d3.csv("https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world_population.csv", function (d) {
-        data.set(d.code, +d.pop)
-    })
-]).then(function (loadData) {
-    let topo = loadData[0]
+// append the svg object to the body of the page
+const svg = d3.select("#my_dataviz")
+    .append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform", `translate(${margin.left}, ${margin.top})`);
 
-    const mouseOver = function (d) {
-        d3.selectAll('.Country')
-            .transition()
-            .duration(200)
-            .style('opacity', .5)
-        d3.select(this)
-            .transition()
-            .duration(200)
-            .style('opacity', 1)
-            .style('stroke', 'black')
-    };
+// Parse the Data
+d3.csv("https://raw.githubusercontent.com/holtzy/data_to_viz/master/Example_dataset/7_OneCatOneNum_header.csv").then(function (data) {
 
-    let mouseLeave = function () {
-        d3.selectAll('.Country')
-            .transition()
-            .duration(200)
-            .style('opacity', .8)
-        d3.select(this)
-            .transition()
-            .duration(200)
-            .style('stroke', 'transparent')
-    };
+    // sort data
+    data.sort(function (b, a) {
+        return a.Value - b.Value;
+    });
 
-    // Draw the map
+    // X axis
+    const x = d3.scaleBand()
+        .range([0, width])
+        .domain(data.map(d => d.Country))
+        .padding(0.2);
     svg.append("g")
-        .selectAll("path")
-        .data(topo.features)
-        .join("path")
-        // draw each country
-        .attr("d", d3.geoPath()
-            .projection(projection)
-        )
-        // set the color of each country
-        .attr("fill", function (d) {
-            d.total = data.get(d.id) || 0;
-            return colorScale(d.total);
+        .attr("transform", `translate(0, ${height})`)
+        .call(d3.axisBottom(x))
+        .selectAll("text")
+        .attr("transform", "translate(-10,0)rotate(-45)")
+        .style("text-anchor", "end");
+
+    // add Y axis
+    const y = d3.scaleLinear()
+        .domain([0, 13000])
+        .range([height, 0]);
+    svg.append('g')
+        .call(d3.axisLeft(y));
+    // Bars
+    svg.selectAll("mybar")
+        .data(data)
+        .enter()
+        .append("rect")
+        .attr("x", d => x(d.Country))
+        .attr("width", x.bandwidth())
+        .attr("fill", "#69b3a2")
+        // no bar at the beginning thus:
+        .attr('height', d => height - y(0)) // always equal to 0
+        .attr("y", d => y(0));
+    // Animation
+    svg.selectAll("rect")
+        .transition()
+        .duration(800)
+        .attr("y", d => y(d.Value))
+        .attr("height", d => height - y(d.Value))
+        .delay((d, i) => {
+            console.log(i);
+            return i * 100
         })
-        .style('stroke', 'transparent')
-        .attr('class', d => 'Country')
-        .style('opacity', 0.8)
-        .on('mouseover', mouseOver)
-        .on('mouseleave', mouseLeave)
 })
+
+// This function is called by the buttons on top of the plot
+function changeColor(color) {
+    d3.selectAll('rect')
+        .transition()
+        .duration(2000)
+        .style('fill', color)
+}
